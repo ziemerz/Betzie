@@ -23,3 +23,15 @@ func HttpResponse(w http.ResponseWriter, r *http.Request, httpStatus int) {
 	w.Header().Set("Content-Type:", "application/json; charset=UTF-8")
 	w.WriteHeader(httpStatus)
 }
+
+func WrapJSON(v interface{}, status bool) ([]byte, error) {
+	wrapped := map[string]interface{}{
+		"success": status,
+		"data":    v,
+	}
+	converted, err := json.Marshal(wrapped)
+	if err != nil {
+		panic(err)
+	}
+	return converted, nil
+}

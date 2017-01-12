@@ -7,20 +7,24 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 )
 
-var db *sql.DB
+var repo Repo
 
-//Give us some seed data
+type Repo struct {
+	db *sql.DB
+}
+
 func init() {
 	//RepoCreateTodo(Todo{Name: "Write presentation"})
 	//RepoCreateTodo(Todo{Name: "Host meetup"})
-	db, _ = sql.Open("mysql", "root:@/betzie")
+	//db, _ = sql.Open("mysql", "root:@/betzie")
+	repo.db, _ = sql.Open("mysql", "root:@/betzie")
 }
 
-func AuthenticateLogin(u User) (User, error) {
+func (rep Repo) AuthenticateLogin(u User) (User, error) {
 	var user User
 	var hashedPW []byte
 
-	stmt, err := db.Prepare("SELECT id, username, password, role_id, first_name, last_name FROM users WHERE username=?")
+	stmt, err := repo.db.Prepare("SELECT id, username, password, role_id, first_name, last_name FROM users WHERE username=?")
 	if err != nil {
 		panic(err.Error())
 	}
@@ -41,8 +45,8 @@ func AuthenticateLogin(u User) (User, error) {
 	}
 }
 
-func InsertUser(u User) error {
-	stmt, err := db.Prepare("INSERT INTO users (username, password, role_id, first_name, last_name) VALUES (?,?,?,?,?)")
+func (rep Repo) InsertUser(u User) error {
+	stmt, err := repo.db.Prepare("INSERT INTO users (username, password, role_id, first_name, last_name) VALUES (?,?,?,?,?)")
 	if err != nil {
 		panic(err)
 	}
@@ -58,4 +62,36 @@ func InsertUser(u User) error {
 		return nil
 	}
 	return fmt.Errorf("Could not create user")
+}
+
+func (rep Repo) GetCoupon(id int) (Coupon, error) {
+	var coupon Coupon
+	bets := make([]Bet, 0, 20)
+	var sql string
+	sql = "SELECT coupon_id, custom_name, bet_amount, expected_return, actual_return, fail_success FROM coupons WHERE coupon_id = ?"
+	res, err := repo.db.Query(sql, id)
+	if err != nil {
+		panic(err.Error())
+	}
+	if !res.Next() {
+		return Coupon{}, fmt.Errorf("Could not find coupon")
+	}
+	err = res.Scan(&coupon.Id, &coupon.Name, &coupon.BetAmount, &coupon.ExpectedReturn, &coupon.ActualReturn, &coupon.FailSuccess)
+
+	if err != nil {
+		panic(err.Error())
+	}
+
+	sql = "SELECT bets.team1, bets.team2, bets.type, sports.sport_name FROM coupons_to_bets INNER JOIN bets ON coupons_to_bets.bet_id_fk = bets.bet_id INNER JOIN sports ON sports.sport_id = bets.sport_id_fk WHERE coupons_to_bets.coupons_id_fk = ?"
+	res, err = repo.db.Query(sql, id)
+	if err != nil {
+		panic(err.Error())
+	}
+	for res.Next() {
+		var bet Bet
+		res.Scan(&bet.Team1, &bet.Team2, &bet.Type, &bet.Sport)
+		bets = append(bets, bet)
+	}
+	coupon.Bets = bets
+	return coupon, nil
 }

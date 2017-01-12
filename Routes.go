@@ -38,4 +38,10 @@ var routes = Routes{
 		"/coupon",
 		CreateCoupon,
 	},
+	Route{
+		"GetCoupon",
+		"GET",
+		"/coupon/{couponId}",
+		GetCoupon,
+	},
 }

@@ -1,13 +1,17 @@
 package main
 
 import (
+	. "Betzie/ctypes"
 	"encoding/json"
 	"fmt"
 	"github.com/gorilla/mux"
 	"io"
 	"io/ioutil"
 	"net/http"
+	"strconv"
 )
+
+var rep Repo
 
 func Index(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintln(w, "Welcome!")
@@ -61,7 +65,7 @@ func Login(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		panic(err)
 	}
-	user, err = AuthenticateLogin(user)
+	user, err = rep.AuthenticateLogin(user)
 	if err != nil {
 		panic(err)
 	}
@@ -88,7 +92,7 @@ func CreateUser(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		panic(err)
 	}
-	err = InsertUser(user)
+	err = rep.InsertUser(user)
 	if err != nil {
 		panic(err)
 	}
@@ -115,4 +119,32 @@ func CreateCoupon(w http.ResponseWriter, r *http.Request) {
 	HttpResponse(w, r, http.StatusCreated)
 
 	JsonResponse(w, r, body, &coupon)
+
+	if err := json.NewEncoder(w).Encode(coupon); err != nil {
+		panic(err)
+	}
+}
+
+func GetCoupon(w http.ResponseWriter, r *http.Request) {
+	var coupon Coupon
+	vars := mux.Vars(r)
+	couponId, err := strconv.Atoi(vars["couponId"])
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Println("Getting coupon")
+	coupon, err = rep.GetCoupon(couponId)
+	if err != nil {
+		panic(err)
+	}
+	jcoupon, err := WrapJSON(coupon, true)
+	if err != nil {
+		panic(err)
+	}
+	HttpResponse(w, r, http.StatusOK)
+	//if err := json.NewEncoder(w).Encode(jcoupon); err != nil {
+	//	panic(err)
+	//}
+	w.Write(jcoupon)
 }
